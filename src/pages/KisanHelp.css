@@ -1,0 +1,281 @@
+/* src/KisanHelp.css */
+.kh-container {
+  min-height: 100vh;
+  background-color: #efeae2; /* WhatsApp web background color pattern */
+  background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20zm4 0h2v20H4V20zm4 0h2v20H8V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2z" fill="%23dfd8ce" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.kh-header {
+  background-color: #075e54;
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  z-index: 100;
+  gap: 15px;
+}
+
+.kh-back-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.kh-back-btn:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.kh-header-text {
+  flex: 1;
+}
+
+.kh-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.kh-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  margin: 2px 0 0 0;
+  font-weight: 400;
+}
+
+.kh-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.kh-icon-action {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kh-icon-action:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.kh-chat-window {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 768px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.kh-message-row {
+  display: flex;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.kh-message-row.user-row {
+  justify-content: flex-end;
+}
+
+.kh-message-row.ai-row {
+  justify-content: flex-start;
+}
+
+.kh-bubble-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 85%;
+}
+
+.kh-message-row.user-row .kh-bubble-wrapper {
+  flex-direction: row-reverse;
+}
+
+.kh-bubble {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+
+.kh-bubble.user-bubble {
+  background-color: #dcf8c6;
+  border-top-right-radius: 0;
+  color: #111;
+}
+
+.kh-bubble.ai-bubble {
+  background-color: #ffffff;
+  border-top-left-radius: 0;
+  color: #111;
+}
+
+.kh-bubble-text {
+  margin-bottom: 4px;
+}
+
+.kh-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: rgba(0,0,0,0.45);
+  margin-top: 2px;
+}
+
+.kh-replay-btn {
+  background: none;
+  border: none;
+  color: #075e54;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.kh-replay-btn:hover {
+  background-color: rgba(0,0,0,0.05);
+  opacity: 1;
+}
+
+/* Typing Indicator */
+.kh-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  border-top-left-radius: 0;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  width: fit-content;
+  margin-bottom: 8px;
+}
+
+.kh-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #9cb3a8;
+  animation: typing 1.4s infinite ease-in-out both;
+}
+
+.kh-dot:nth-child(1) { animation-delay: -0.32s; }
+.kh-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Input Area */
+.kh-input-area {
+  background-color: #f0f0f0;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: center;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+}
+
+.kh-input-form {
+  display: flex;
+  gap: 10px;
+  max-width: 768px;
+  width: 100%;
+  align-items: flex-end;
+}
+
+.kh-input-wrapper {
+  flex: 1;
+  background-color: white;
+  border-radius: 24px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+
+.kh-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  font-family: inherit;
+  padding: 12px 0;
+  background: transparent;
+}
+
+.kh-action-btn {
+  background-color: #00a884;
+  color: white;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.2s;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.kh-action-btn:active {
+  transform: scale(0.95);
+}
+
+.kh-action-btn.mic-btn {
+  background-color: #00a884;
+}
+
+.kh-action-btn.mic-active {
+  background-color: #ef4444;
+  animation: pulse 1.5s infinite;
+}
+
+.kh-action-btn.send-btn {
+  background-color: #00a884;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}

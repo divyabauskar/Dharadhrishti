@@ -1,37 +1,44 @@
 import React, { useState } from 'react';
 import { Globe, Languages, Speech, CheckCircle, ArrowRight, Settings, MapPin, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const languages = [
-  {
-    id: 'en',
-    name: 'English',
-    desc: 'Default system language',
-    icon: <Globe size={24} />
-  },
-  {
-    id: 'hi',
-    name: 'Hindi',
-    desc: 'हिन्दी - Primary regional',
-    icon: <Languages size={24} />
-  },
-  {
-    id: 'mr',
-    name: 'Marathi',
-    desc: 'मराठी - Regional precision',
-    icon: <Speech size={24} />
-  },
-  {
-    id: 'te',
-    name: 'Telugu',
-    desc: 'తెలుగు - Enhanced support',
-    icon: <CheckCircle size={24} /> 
-  }
-];
+import { useLanguage } from '../context/LanguageContext';
 
 export default function LanguageSelection() {
-  const [selected, setSelected] = useState('en');
+  const { language, changeLanguage, t } = useLanguage();
+  const [selected, setSelected] = useState(language || 'en');
   const navigate = useNavigate();
+
+  const handleContinue = () => {
+    changeLanguage(selected);
+    navigate('/login');
+  };
+
+  const localizedLanguages = [
+    {
+      id: 'en',
+      name: 'English',
+      desc: t('descEn'),
+      icon: <Globe size={24} />
+    },
+    {
+      id: 'hi',
+      name: 'Hindi',
+      desc: t('descHi'),
+      icon: <Languages size={24} />
+    },
+    {
+      id: 'mr',
+      name: 'Marathi',
+      desc: t('descMr'),
+      icon: <Speech size={24} />
+    },
+    {
+      id: 'te',
+      name: 'Telugu',
+      desc: t('descTe'),
+      icon: <CheckCircle size={24} /> 
+    }
+  ];
 
   return (
     <div className="app-container">
@@ -50,13 +57,13 @@ export default function LanguageSelection() {
       <main className="app-content">
         <div className="indicator-bar"></div>
         
-        <h1 className="page-title">Choose Your Language</h1>
+        <h1 className="page-title">{t('chooseLanguage')}</h1>
         <p className="page-subtitle">
-          Select your preferred language to<br/>customize your Dharadhristi<br/>experience.
+          {t('chooseLangDesc')}
         </p>
 
         <div className="language-list">
-          {languages.map((lang) => {
+          {localizedLanguages.map((lang) => {
             const isSelected = selected === lang.id;
             return (
               <div 
@@ -81,12 +88,12 @@ export default function LanguageSelection() {
 
       {/* Bottom Actions */}
       <div className="bottom-actions">
-        <button className="btn-primary" onClick={() => navigate('/login')}>
-          Continue <ArrowRight size={20} />
+        <button className="btn-primary" onClick={handleContinue}>
+          {t('continue')} <ArrowRight size={20} />
         </button>
         <div className="footer-info">
           <Info size={14} fill="#5E6A6E" color="white" />
-          <span>You can change this anytime in Settings</span>
+          <span>{t('settingsWarning')}</span>
         </div>
       </div>
     </div>

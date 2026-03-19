@@ -1,0 +1,370 @@
+/* src/Marketplace.css */
+.marketplace-container {
+  min-height: 100vh;
+  background-color: #f4f7f6;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #333;
+  padding-bottom: 40px;
+}
+
+.market-header {
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+  top: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  z-index: 100;
+}
+
+.market-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+  color: #2c3e50;
+  text-transform: uppercase;
+}
+
+.market-main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Profit Section */
+.profit-card {
+  background-color: #0f766e;
+  color: white;
+  padding: 25px 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(15, 118, 110, 0.2);
+  text-align: center;
+}
+
+.profit-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 10px 0;
+  color: #99f6e4;
+  font-weight: 600;
+}
+
+.profit-amount {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.profit-details {
+  font-size: 0.85rem;
+  margin: 15px 0 0 0;
+  color: #ccfbf1;
+  font-weight: 500;
+}
+
+/* Data summary grid */
+.data-grid {
+  display: flex;
+  gap: 15px;
+}
+
+.data-card {
+  flex: 1;
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.data-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.data-value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* Common Section Styles */
+.market-section {
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.section-title {
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: #0f172a;
+  margin: 0 0 15px 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 10px;
+}
+
+/* Mandi Prices List */
+.price-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 12px;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.price-item.active {
+  background-color: #f0fdf4;
+  border-color: #10b981;
+}
+
+.crop-name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.crop-badge {
+  font-size: 0.6rem;
+  background-color: #10b981;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.price-details {
+  text-align: right;
+}
+
+.price-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.trend {
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 0;
+}
+.trend-up { color: #10b981; }
+.trend-down { color: #ef4444; }
+
+/* Expense Tracker */
+.expense-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 10px;
+}
+
+.expense-header h3 {
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: #0f172a;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.expense-total-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  background-color: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.form-input {
+  padding: 12px 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: #10b981;
+}
+
+.btn-add {
+  background-color: #0f172a;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 5px;
+  font-family: inherit;
+}
+
+.btn-add:hover {
+  background-color: #1e293b;
+}
+
+/* Logs */
+.log-section-title {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 15px 0;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+}
+
+.log-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-title {
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.log-date {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.log-amount-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.log-amount {
+  font-weight: bold;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 5px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.btn-delete:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.no-data {
+  text-align: center;
+  color: #64748b;
+  padding: 30px 20px;
+  background-color: #f8fafc;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Back Button */
+.btn-back-container {
+  text-align: center;
+  margin-top: 5px;
+}
+
+.btn-back {
+  background-color: white;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.btn-back:hover {
+  color: #0f766e;
+  border-color: #0f766e;
+}
