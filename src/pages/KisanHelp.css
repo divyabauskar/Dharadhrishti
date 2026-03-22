@@ -1,32 +1,31 @@
 /* src/KisanHelp.css */
 .kh-container {
   min-height: 100vh;
-  background-color: #efeae2; /* WhatsApp web background color pattern */
-  background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20zm4 0h2v20H4V20zm4 0h2v20H8V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2z" fill="%23dfd8ce" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #F8FAFC; /* Clean modern background */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
 }
 
 .kh-header {
-  background-color: #075e54;
-  color: white;
-  padding: 12px 16px;
+  background-color: #FFFFFF;
+  color: #1E293B;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   position: sticky;
   top: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-bottom: 1px solid #E2E8F0;
   z-index: 100;
-  gap: 15px;
+  gap: 16px;
 }
 
 .kh-back-btn {
   background: none;
   border: none;
-  color: white;
+  color: #1E293B;
   cursor: pointer;
-  padding: 5px;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -35,7 +34,7 @@
 }
 
 .kh-back-btn:hover {
-  background-color: rgba(255,255,255,0.1);
+  background-color: #F1F5F9;
 }
 
 .kh-header-text {
@@ -43,16 +42,17 @@
 }
 
 .kh-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 800;
   margin: 0;
+  color: #1E293B;
 }
 
 .kh-subtitle {
-  font-size: 0.8rem;
-  opacity: 0.9;
+  font-size: 0.85rem;
+  color: #64748B;
   margin: 2px 0 0 0;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .kh-controls {
@@ -61,29 +61,31 @@
 }
 
 .kh-icon-action {
-  background: none;
+  background: #F1F5F9;
   border: none;
-  color: white;
+  color: #475569;
   cursor: pointer;
-  padding: 8px;
+  padding: 10px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .kh-icon-action:hover {
-  background-color: rgba(255,255,255,0.1);
+  background-color: #E2E8F0;
+  color: #1E293B;
 }
 
 .kh-chat-window {
   flex: 1;
-  padding: 20px;
+  padding: 24px 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 768px;
+  gap: 16px;
+  max-width: 800px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -92,7 +94,6 @@
 .kh-message-row {
   display: flex;
   width: 100%;
-  margin-bottom: 4px;
 }
 
 .kh-message-row.user-row {
@@ -107,7 +108,7 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 85%;
+  max-width: 80%;
 }
 
 .kh-message-row.user-row .kh-bubble-wrapper {
@@ -116,54 +117,66 @@
 
 .kh-bubble {
   position: relative;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 14px 16px;
+  border-radius: 16px;
   font-size: 0.95rem;
-  line-height: 1.4;
+  line-height: 1.5;
   word-wrap: break-word;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
-  min-width: 120px;
+  min-width: 100px;
 }
 
 .kh-bubble.user-bubble {
-  background-color: #dcf8c6;
-  border-top-right-radius: 0;
-  color: #111;
+  background-color: #0B6A41;
+  color: #FFFFFF;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 6px -1px rgba(11, 106, 65, 0.2);
 }
 
 .kh-bubble.ai-bubble {
-  background-color: #ffffff;
-  border-top-left-radius: 0;
-  color: #111;
+  background-color: #FFFFFF;
+  color: #1E293B;
+  border: 1px solid #E2E8F0;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .kh-bubble-text {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .kh-meta {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
-  font-size: 0.65rem;
-  color: rgba(0,0,0,0.45);
-  margin-top: 2px;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: inherit;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+.kh-bubble.user-bubble .kh-meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.kh-bubble.ai-bubble .kh-meta {
+  color: #64748B;
 }
 
 .kh-replay-btn {
   background: none;
   border: none;
-  color: #075e54;
+  color: inherit;
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.7;
+  opacity: 0.8;
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
 .kh-replay-btn:hover {
@@ -176,20 +189,14 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 12px 16px;
-  background-color: #ffffff;
-  border-radius: 16px;
-  border-top-left-radius: 0;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-  width: fit-content;
-  margin-bottom: 8px;
+  padding: 2px 4px;
 }
 
 .kh-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #9cb3a8;
+  background-color: #94A3B8;
   animation: typing 1.4s infinite ease-in-out both;
 }
 
@@ -197,64 +204,73 @@
 .kh-dot:nth-child(2) { animation-delay: -0.16s; }
 
 @keyframes typing {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 /* Input Area */
 .kh-input-area {
-  background-color: #f0f0f0;
-  padding: 10px 16px;
+  background-color: #FFFFFF;
+  padding: 16px 20px;
   display: flex;
   justify-content: center;
   position: sticky;
   bottom: 0;
+  border-top: 1px solid #E2E8F0;
   z-index: 100;
 }
 
 .kh-input-form {
   display: flex;
-  gap: 10px;
-  max-width: 768px;
+  gap: 12px;
+  max-width: 800px;
   width: 100%;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .kh-input-wrapper {
   flex: 1;
-  background-color: white;
-  border-radius: 24px;
-  padding: 0 16px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 100px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  min-height: 48px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+  min-height: 54px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.kh-input-wrapper:focus-within {
+  border-color: #0B6A41;
+  box-shadow: 0 0 0 3px rgba(11, 106, 65, 0.1);
 }
 
 .kh-input {
   flex: 1;
   border: none;
   outline: none;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-family: inherit;
-  padding: 12px 0;
+  padding: 16px 0;
   background: transparent;
+  color: #1E293B;
+}
+
+.kh-input::placeholder {
+  color: #94A3B8;
 }
 
 .kh-action-btn {
-  background-color: #00a884;
-  color: white;
-  border: none;
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.1s, background-color 0.2s;
+  transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s;
   flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  border: none;
 }
 
 .kh-action-btn:active {
@@ -262,20 +278,42 @@
 }
 
 .kh-action-btn.mic-btn {
-  background-color: #00a884;
+  background-color: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+.kh-action-btn.mic-btn:hover:not(:disabled) {
+  background-color: #E2E8F0;
+  color: #1E293B;
 }
 
 .kh-action-btn.mic-active {
-  background-color: #ef4444;
-  animation: pulse 1.5s infinite;
+  background-color: #FEF2F2 !important;
+  color: #DC2626 !important;
+  border-color: #FCA5A5 !important;
+  animation: pulse-red 1.5s infinite;
 }
 
 .kh-action-btn.send-btn {
-  background-color: #00a884;
+  background-color: #0B6A41;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(11, 106, 65, 0.2);
 }
 
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+.kh-action-btn.send-btn:hover:not(:disabled) {
+  background-color: #095031;
+  box-shadow: 0 6px 8px -1px rgba(11, 106, 65, 0.3);
+}
+
+.kh-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
 }

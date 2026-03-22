@@ -96,11 +96,11 @@ export default function KisanHelp() {
       return `Provide 5-7 liters of water per plant for ${crop} today. Skip if it rains.`;
     }
 
-    // Intent: Disease
-    if (query.includes('disease') || query.includes('bimari') || query.includes('rog') || query.includes('spot')) {
-      if (currentLangCode === 'hi') return `पत्ती पर धब्बे फंगस हो सकते हैं। 2 ग्राम साफ (Saaf) फफूंदनाशक 1 लीटर पानी में मिलाकर स्प्रे करें।`;
-      if (currentLangCode === 'mr') return `पानांवरील ठिपके बुरशी असू शकतात. १ लिटर पाण्यात २ ग्रॅम साफ (Saaf) मिसळून फवारणी करा.`;
-      return `Spots can be fungal. Spray 2g of Saaf fungicide per liter of water immediately.`;
+    // Intent: Disease / Pests
+    if (query.includes('disease') || query.includes('bimari') || query.includes('rog') || query.includes('spot') || query.includes('yellow') || query.includes('pila') || query.includes('pivali') || query.includes('pest') || query.includes('keeda') || query.includes('kid')) {
+      if (currentLangCode === 'hi') return `पत्ती पर धब्बे या पीलापन फंगस या कीड़े हो सकते हैं। 2 ग्राम साफ (Saaf) या नीम तेल 1 लीटर पानी में मिलाकर स्प्रे करें।`;
+      if (currentLangCode === 'mr') return `पानांवरील ठिपके किंवा पिवळेपणा बुरशी किंवा कीड असू शकतात. १ लिटर पाण्यात २ ग्रॅम साफ (Saaf) किंवा कडुनिंबाचे तेल मिसळून फवारणी करा.`;
+      return `Spots or yellowing can be fungal or pest-related. Spray 2g of Saaf fungicide or Neem oil per liter of water immediately.`;
     }
 
     // Intent: Fertilizer
@@ -117,10 +117,31 @@ export default function KisanHelp() {
       return `Light rain expected in next 24 hours. Hold off on any chemical sprays or irrigation.`;
     }
 
+    // Intent: Yield / Growth
+    if (query.includes('yield') || query.includes('grow') || query.includes('upaj') || query.includes('utpadan')) {
+      if (currentLangCode === 'hi') return `उत्पादन बढ़ाने के लिए सही समय पर खाद और पानी दें, और खरपतवार नियंत्रण करें।`;
+      if (currentLangCode === 'mr') return `उत्पादन वाढवण्यासाठी योग्य वेळी खत आणि पाणी द्या, आणि तण नियंत्रण करा.`;
+      return `To increase yield, ensure timely fertilization, proper irrigation, and weed control.`;
+    }
+    
+    // Intent: Soil
+    if (query.includes('soil') || query.includes('mitti') || query.includes('mati') || query.includes('zameen')) {
+      if (currentLangCode === 'hi') return `मिट्टी की जांच कराएं। आम तौर पर बुवाई से पहले वर्मीकम्पोस्ट या गोबर की खाद मिलाना फायदेमंद होता है।`;
+      if (currentLangCode === 'mr') return `माती परीक्षण करा. साधारणपणे पेरणीपूर्वी गांडूळ खत किंवा शेणखत मिसळणे फायदेशीर ठरते.`;
+      return `Get your soil tested. Generally, adding vermicompost or FYM before sowing is beneficial.`;
+    }
+    
+    // Intent: Market / Price
+    if (query.includes('price') || query.includes('market') || query.includes('bhav') || query.includes('mandi') || query.includes('bazaar')) {
+      if (currentLangCode === 'hi') return `बाज़ार भाव प्रतिदिन बदलते हैं। कृपया ताज़ा मंडी भाव के लिए नज़दीकी मंडी या कृषि ऐप देखें।`;
+      if (currentLangCode === 'mr') return `बाजारभाव दररोज बदलतात. कृपया ताज्या बाजारभावासाठी जवळची बाजार समिती किंवा कृषी ॲप पहा.`;
+      return `Market prices fluctuate daily. Please check your local mandi or agricultural app for the latest rates.`;
+    }
+
     // Fallback
-    if (currentLangCode === 'hi') return `कृपया स्पष्ट सवाल पूछें। मैं खेती, पानी या बीमारी में मदद कर सकता हूँ।`;
-    if (currentLangCode === 'mr') return `कृपया स्पष्ट प्रश्न विचारा। मी शेती, पाणी किंवा रोगाशी मदत करू शकतो।`;
-    return `Please ask clearly. I can assist with irrigation, diseases, or fertilizers.`;
+    if (currentLangCode === 'hi') return `मुझे यह समझने में कठिनाई हो रही है। क्या आप पानी, बीमारी, या खाद के बारे में पूछना चाहते हैं?`;
+    if (currentLangCode === 'mr') return `मला हे समजण्यात अडचण येत आहे. तुम्हाला पाणी, रोग किंवा खताबद्दल विचारायचे आहे का?`;
+    return `I'm having trouble understanding. Did you mean to ask about water, diseases, yield, or fertilizers?`;
   };
 
   const handleSend = (textOverride) => {
@@ -129,6 +150,9 @@ export default function KisanHelp() {
     if (typeof textOverride === 'string') {
       textToSend = textOverride.trim();
     } else {
+      if (textOverride && typeof textOverride.preventDefault === 'function') {
+        textOverride.preventDefault();
+      }
       textToSend = inputText.trim();
     }
     
@@ -292,7 +316,7 @@ export default function KisanHelp() {
             disabled={isTyping}
             title="Voice Input"
           >
-            <Mic size={22} color="white" />
+            <Mic size={22} />
           </button>
           
           <button 
@@ -301,7 +325,7 @@ export default function KisanHelp() {
             disabled={(!inputText.trim() && !isListening) || isTyping}
             title="Send"
           >
-            <Send size={20} color="white" style={{ marginLeft: '2px' }}/>
+            <Send size={20} style={{ marginLeft: '2px' }}/>
           </button>
         </form>
       </footer>

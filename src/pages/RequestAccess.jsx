@@ -3,6 +3,18 @@ import { ArrowLeft, CheckCircle, Info, ChevronDown, ArrowRight } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
+const HISTORY_CROPS = [
+  { name: 'Wheat', emoji: '🌾' },
+  { name: 'Rice', emoji: '🍚' },
+  { name: 'Maize', emoji: '🌽' },
+  { name: 'Sugarcane', emoji: '🎋' },
+  { name: 'Cotton', emoji: '☁️' },
+  { name: 'Potato', emoji: '🥔' },
+  { name: 'Moong', emoji: '🌱' },
+];
+
+const SOIL_TYPES = ['Black Soil', 'Red Soil', 'Sandy Soil'];
+
 const ALL_CROPS = [
   "Select your primary crop",
   "Wheat", "Rice", "Maize (Corn)", "Soybean", "Barley", "Sorghum", "Millet", 
@@ -29,6 +41,16 @@ export default function RequestAccess() {
     sowingDate: ''
   });
   
+  const [step, setStep] = useState(1);
+  const [hasCard, setHasCard] = useState(null);
+  const [nitrogen, setNitrogen] = useState('');
+  const [phosphorus, setPhosphorus] = useState('');
+  const [potassium, setPotassium] = useState('');
+  const [ph, setPh] = useState('');
+  const [lastCrop, setLastCrop] = useState('');
+  const [previousCrop, setPreviousCrop] = useState('');
+  const [soilType, setSoilType] = useState('');
+
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -42,24 +64,22 @@ export default function RequestAccess() {
     return 'Clay soil';
   };
 
-  const handleSubmit = async (e) => {
+  const handleNextStep1 = (e) => {
     e.preventDefault();
     setErrorMsg('');
     
     if (!formData.fullName || !formData.phone || !formData.farmSize || !formData.region) {
-      setErrorMsg('Please fill out all required fields (Name, Phone, Region, Farm Size).');
+      setErrorMsg('Please fill required details');
       return;
     }
 
-    // Sowing Date Validation
     if (!formData.sowingDate) {
-      setErrorMsg('Please select a Sowing Date.');
+      setErrorMsg('Please fill required details');
       return;
     }
 
     const selectedDate = new Date(formData.sowingDate);
     const today = new Date();
-    // Reset time for accurate date comparison
     today.setHours(0, 0, 0, 0);
 
     if (selectedDate > today) {
@@ -67,10 +87,43 @@ export default function RequestAccess() {
       return;
     }
 
+    setStep(2);
+  };
+
+  const handleNextStep2 = (e) => {
+    setErrorMsg('');
+    if (hasCard === null) {
+      setErrorMsg('Please fill required details');
+      return;
+    }
+    if (hasCard) {
+      if (!nitrogen || !phosphorus || !potassium || !ph) {
+        setErrorMsg('Please fill required details');
+        return;
+      }
+      // If user has card, skip step 3 and save directly
+      handleFinalSubmit(e);
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleFinalSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setErrorMsg('');
+    
+    // Only require crop history if user has no card and proceeds to step 3
+    if (hasCard === false) {
+      if (!lastCrop || !soilType) {
+        setErrorMsg('Please fill required details');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
-      // 1. Geocoding using OpenStreetMap Nominatim API (Free, no auth required)
+      // 1. Geocoding using OpenStreetMap Nominatim API
       const encodedRegion = encodeURIComponent(formData.region);
       const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedRegion}&limit=1`;
       
@@ -80,26 +133,17 @@ export default function RequestAccess() {
       const response = await fetch(geoUrl, {
         headers: {
           'Accept-Language': 'en',
-          // Nominatim requires a user agent
           'User-Agent': 'DharadhristiApp/1.0' 
         }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch location data');
-      }
+      if (!response.ok) throw new Error('Failed to fetch location data');
 
       const data = await response.json();
-      
       if (data && data.length > 0) {
         lat = data[0].lat;
         lon = data[0].lon;
-      } else {
-        console.warn('Location not found in geocoding API, proceeding without exact coordinates.');
       }
-
-      // 2. Mock Soil Type
-      const soilType = getSoilType(formData.region);
 
       // 3. Build User Data Object
       const userData = {
@@ -111,43 +155,41 @@ export default function RequestAccess() {
         farmSize: formData.farmSize,
         crop: formData.primaryCrop !== 'Select your primary crop' ? formData.primaryCrop : '',
         sowingDate: formData.sowingDate,
-        soilType: soilType
+        
+        // This structure supports future integration with Soil Health APIs and ML models
+        soilHealth: {
+          hasCard: hasCard || false,
+          nitrogen: nitrogen || "",
+          phosphorus: phosphorus || "",
+          potassium: potassium || "",
+          ph: ph || ""
+        },
+        cropHistory: {
+          lastCrop: lastCrop || "",
+          previousCrop: previousCrop || "",
+          soilType: soilType || ""
+        }
       };
 
-      // 4. Save to Local Storage Data Model
-      const currentUserRaw = localStorage.getItem('currentUser');
-      let email = `user_${Date.now()}@domain.com`; // Fallback
-      
-      if (currentUserRaw) {
-        try {
-          const cu = JSON.parse(currentUserRaw);
-          if (cu.email) email = cu.email;
-          
-          cu.name = formData.fullName || cu.name;
-          localStorage.setItem('currentUser', JSON.stringify(cu));
-          localStorage.setItem(`user_${email}`, JSON.stringify(cu));
-        } catch(e) { console.error(e); }
-      } else {
-        // Create user identity if direct navigation
-        email = formData.phone ? `${formData.phone.replace(/\\D/g, '')}@phone.com` : `user_${Date.now()}@domain.com`;
-        const newUser = { name: formData.fullName, email: email };
-        localStorage.setItem('currentUser', JSON.stringify(newUser));
-        localStorage.setItem(`user_${email}`, JSON.stringify(newUser));
-      }
-
-      // Save scoped farm data
+      // Ensure backward compatibility with existing currentUser logic
+      let email = formData.phone ? `${formData.phone.replace(/\D/g, '')}@phone.com` : `user_${Date.now()}@domain.com`;
+      const newUser = { name: formData.fullName, email: email };
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      localStorage.setItem(`user_${email}`, JSON.stringify(newUser));
       localStorage.setItem(`farm_${email}`, JSON.stringify(userData));
 
-      // 5. Redirect straight to dashboard
+      // Global userData requirement
+      localStorage.setItem('userData', JSON.stringify(userData));
+
       setShowSuccessModal(true);
       setTimeout(() => {
         setShowSuccessModal(false);
-        navigate('/dashboard');
+        navigate('/login');
       }, 2000);
 
     } catch (err) {
       console.error("Geocoding or submission error:", err);
-      setErrorMsg('An error occurred while verifying your location. Please try again or refine your region.');
+      setErrorMsg('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -166,36 +208,42 @@ export default function RequestAccess() {
 
       {/* Main Content */}
       <main className="req-content">
-        <div className="badge-onboarding">ONBOARDING</div>
-        <h1 className="hero-title pt-4">Join the<br/><span className="text-primary">Dharadhristi</span><br/>Network</h1>
-        <p className="hero-desc">
-          Enter your details below, and our team will review your application to grant access to the Dharadhristi platform.
-        </p>
+        <div className="flex justify-center mb-4 text-sm font-bold text-gray-500">
+          Step {step} of 3
+        </div>
 
-        {/* Info Banner box */}
-        <div className="info-box-white mb-6">
-          <div className="info-icon-wrapper-green">
-            <CheckCircle size={20} fill="#0B6A41" color="white" />
-          </div>
+        {step === 1 && (
           <div>
-            <h3 className="info-title">Verified Access</h3>
-            <p className="info-desc">Enter your details below, and our team will review your application to grant access to the Dharadhristi platform.</p>
-          </div>
-        </div>
+            <div className="badge-onboarding">ONBOARDING</div>
+            <h1 className="hero-title pt-4">Join the<br/><span className="text-primary">Dharadhristi</span><br/>Network</h1>
+            <p className="hero-desc">
+              Enter your details below, and our team will review your application to grant access to the Dharadhristi platform.
+            </p>
 
-        {/* Processing Info styling matches the left border green card in UI */}
-        <div className="status-box-border mb-8">
-           <Info size={18} color="#0B6A41" fill="none" className="shrink-0" />
-           <p className="status-italic">Applications are typically processed within 24-48 business hours.</p>
-        </div>
-
-        {/* Form */}
-        <form className="req-form" onSubmit={handleSubmit}>
-          {errorMsg && (
-            <div className="mb-4 text-red-600 text-sm font-semibold text-center" style={{ color: '#D93025' }}>
-              {errorMsg}
+            {/* Info Banner box */}
+            <div className="info-box-white mb-6">
+              <div className="info-icon-wrapper-green">
+                <CheckCircle size={20} fill="#0B6A41" color="white" />
+              </div>
+              <div>
+                <h3 className="info-title">Verified Access</h3>
+                <p className="info-desc">Enter your details below, and our team will review your application to grant access to the Dharadhristi platform.</p>
+              </div>
             </div>
-          )}
+
+            {/* Processing Info styling matches the left border green card in UI */}
+            <div className="status-box-border mb-8">
+               <Info size={18} color="#0B6A41" fill="none" className="shrink-0" />
+               <p className="status-italic">Applications are typically processed within 24-48 business hours.</p>
+            </div>
+
+            {/* Form */}
+            <form className="req-form" onSubmit={handleNextStep1}>
+              {errorMsg && (
+                <div className="mb-4 text-red-600 text-sm font-semibold text-center" style={{ color: '#D93025' }}>
+                  {errorMsg}
+                </div>
+              )}
           <div className="form-group mb-4">
             <label className="form-label-bold">{t('fullName')}</label>
             <input 
@@ -282,16 +330,143 @@ export default function RequestAccess() {
           <button 
             type="submit" 
             className="btn-primary w-full shadow-md"
-            disabled={isSubmitting}
-            style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
-            {isSubmitting ? 'Verifying Location...' : 'Submit Application'} <ArrowRight size={20} />
+            Next Step <ArrowRight size={20} />
           </button>
           
           <p className="text-center mt-6 text-sm text-gray-500">
             Already have an account? <span className="font-semibold text-primary cursor-pointer" onClick={() => navigate('/login')}>Sign in</span>
           </p>
         </form>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="req-form">
+            <button type="button" onClick={() => setStep(1)} className="mb-4 font-bold flex items-center gap-1" style={{ color: '#0B6A41' }}><ArrowLeft size={16}/> Back</button>
+            <h2 className="text-xl font-bold mb-6 text-center" style={{ color: '#1E293B' }}>Farm Setup - Soil Health</h2>
+            {errorMsg && <div className="mb-4 text-red-600 text-sm font-semibold text-center" style={{ color: '#D93025' }}>{errorMsg}</div>}
+            
+            <div className="form-group mb-6 text-center">
+              <label className="form-label-bold text-lg mb-4 block">Do you have a Soil Health Card?</label>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <button type="button" onClick={() => setHasCard(true)} className="shadow-sm border font-bold" style={{ padding: '12px 24px', borderRadius: '12px', background: hasCard === true ? '#0B6A41' : 'white', color: hasCard === true ? 'white' : '#475569', borderColor: hasCard === true ? '#0B6A41' : '#E2E8F0' }}>YES</button>
+                <button type="button" onClick={() => setHasCard(false)} className="shadow-sm border font-bold" style={{ padding: '12px 24px', borderRadius: '12px', background: hasCard === false ? '#0B6A41' : 'white', color: hasCard === false ? 'white' : '#475569', borderColor: hasCard === false ? '#0B6A41' : '#E2E8F0' }}>NO</button>
+              </div>
+            </div>
+
+            {hasCard === true && (
+              <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label-bold block mb-1">Nitrogen Level</label>
+                  <div className="select-container">
+                    <select className="form-input-solid select-solid appearance-none" value={nitrogen} onChange={e=>setNitrogen(e.target.value)}>
+                      <option value="">Select Level</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                    <div className="select-icon"><ChevronDown size={20} color="#5E6A6E" /></div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label-bold block mb-1">Phosphorus Level</label>
+                  <div className="select-container">
+                    <select className="form-input-solid select-solid appearance-none" value={phosphorus} onChange={e=>setPhosphorus(e.target.value)}>
+                      <option value="">Select Level</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                    <div className="select-icon"><ChevronDown size={20} color="#5E6A6E" /></div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label-bold block mb-1">Potassium Level</label>
+                  <div className="select-container">
+                    <select className="form-input-solid select-solid appearance-none" value={potassium} onChange={e=>setPotassium(e.target.value)}>
+                      <option value="">Select Level</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                    <div className="select-icon"><ChevronDown size={20} color="#5E6A6E" /></div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label-bold block mb-1">pH Value</label>
+                  <input type="number" step="0.1" className="form-input-solid" style={{ width: '100%' }} placeholder="e.g. 6.5" value={ph} onChange={e=>setPh(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label-bold block mb-1">Upload Card (Optional)</label>
+                  <input type="file" className="form-input-solid" style={{ width: '100%', padding: '8px' }} />
+                </div>
+              </div>
+            )}
+            
+            <button 
+              type="button" 
+              onClick={handleNextStep2} 
+              className="btn-primary w-full shadow-md mt-6" 
+              disabled={isSubmitting}
+              style={{ marginTop: '24px', opacity: isSubmitting ? 0.7 : 1 }}
+            >
+              {isSubmitting ? 'Saving Data...' : (hasCard === true ? 'Complete Onboarding' : 'Next Step')} <ArrowRight size={20}/>
+            </button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <form className="req-form" onSubmit={handleFinalSubmit}>
+            <button type="button" onClick={() => setStep(2)} className="mb-4 font-bold flex items-center gap-1" style={{ color: '#0B6A41' }}><ArrowLeft size={16}/> Back</button>
+            <h2 className="text-xl font-bold mb-6 text-center" style={{ color: '#1E293B' }}>Crop History & Soil</h2>
+            {errorMsg && <div className="mb-4 text-red-600 text-sm font-semibold text-center" style={{ color: '#D93025' }}>{errorMsg}</div>}
+            
+            <div className="form-group" style={{ marginBottom: '24px' }}>
+              <label className="form-label-bold block mb-2">Select your last crop</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {HISTORY_CROPS.map(c => (
+                  <div key={c.name} onClick={() => setLastCrop(c.name)} style={{ padding: '8px 12px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', border: '2px solid', transition: 'all 0.2s', borderColor: lastCrop === c.name ? '#0B6A41' : '#E2E8F0', backgroundColor: lastCrop === c.name ? '#F0FAF5' : 'white', minWidth: '60px' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>{c.emoji}</div>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>{c.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '24px' }}>
+              <label className="form-label-bold block mb-2">Select crop before that (Optional)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {HISTORY_CROPS.map(c => (
+                  <div key={c.name} onClick={() => setPreviousCrop(c.name)} style={{ padding: '8px 12px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', border: '2px solid', transition: 'all 0.2s', borderColor: previousCrop === c.name ? '#0B6A41' : '#E2E8F0', backgroundColor: previousCrop === c.name ? '#F0FAF5' : 'white', minWidth: '60px' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>{c.emoji}</div>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>{c.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '32px' }}>
+              <label className="form-label-bold block mb-2">Soil Type</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {SOIL_TYPES.map(s => (
+                  <button type="button" key={s} onClick={() => setSoilType(s)} style={{ padding: '16px', borderRadius: '12px', textAlign: 'left', fontWeight: 'bold', border: '2px solid', transition: 'all 0.2s', borderColor: soilType === s ? '#0B6A41' : '#E2E8F0', backgroundColor: soilType === s ? '#F0FAF5' : 'white', color: soilType === s ? '#0B6A41' : '#475569' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-primary w-full shadow-md"
+              disabled={isSubmitting}
+              style={{ opacity: isSubmitting ? 0.7 : 1 }}
+            >
+              {isSubmitting ? 'Finalizing Setup...' : 'Complete Onboarding'} <ArrowRight size={20} />
+            </button>
+          </form>
+        )}
 
         <footer className="req-footer mt-12 mb-8">
            <hr className="footer-line mb-4" />

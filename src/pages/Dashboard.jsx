@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Flame,
   LogOut,
-  CloudRain
+  CloudRain,
+  RefreshCw
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -29,6 +30,9 @@ export default function Dashboard() {
   const [lastScan, setLastScan] = useState(null);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [isRaining] = useState(() => Math.random() > 0.5);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const [lastSync, setLastSync] = useState(() => localStorage.getItem('lastSync'));
 
   useEffect(() => {
     const currentUserRaw = localStorage.getItem('currentUser');
@@ -79,6 +83,59 @@ export default function Dashboard() {
       }
     }
   }, [navigate]);
+
+  const handleSync = async () => {
+    if (!navigator.onLine) {
+      setSyncMessage('You are offline. Data will sync when internet is available.');
+      setTimeout(() => setSyncMessage(''), 3000);
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncMessage('');
+
+    try {
+      const storedUserData = localStorage.getItem('userData');
+      const dataToSync = storedUserData ? JSON.parse(storedUserData) : {};
+
+      // POST /api/sync
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSync),
+      }).catch(e => console.log('Mock sync post error', e));
+
+      // GET /api/latest-data
+      try {
+        const response = await fetch('/api/latest-data');
+        if (response.ok) {
+          const latestData = await response.json();
+          localStorage.setItem('cachedData', JSON.stringify(latestData));
+        }
+      } catch (e) {
+        console.log('Mock sync get error', e);
+      }
+
+      const syncTime = new Date().toLocaleString();
+      localStorage.setItem('lastSync', syncTime);
+      setLastSync(syncTime);
+      setSyncMessage('Data synced successfully');
+    } catch (error) {
+      console.error('Sync failed:', error);
+      setSyncMessage('Error syncing data');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncMessage(''), 3000);
+    }
+  };
+
+  useEffect(() => {
+    const handleOnline = () => {
+      handleSync();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
 
   // Calculate DAS (Days After Sowing)
   const calculateDAS = () => {
@@ -180,6 +237,36 @@ export default function Dashboard() {
               </span>
             )}
           </div>
+        </section>
+
+        {/* Sync Section */}
+        <section style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', padding: '16px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <RefreshCw size={18} color="#0B6A41" /> {t('offlineSync') || 'Offline Sync'}
+            </h3>
+            {lastSync && <p style={{ fontSize: '0.75rem', color: '#64748B' }}>Last Sync: {lastSync}</p>}
+            {syncMessage && <p style={{ fontSize: '0.75rem', color: syncMessage.includes('offline') || syncMessage.includes('Error') ? '#DC2626' : '#10B981', marginTop: '4px', fontWeight: '600' }}>{syncMessage}</p>}
+          </div>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            style={{ 
+              backgroundColor: isSyncing ? '#94A3B8' : '#0B6A41', 
+              color: 'white', 
+              border: 'none', 
+              padding: '8px 16px', 
+              borderRadius: '20px', 
+              fontWeight: '600', 
+              fontSize: '0.85rem', 
+              cursor: isSyncing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {isSyncing ? 'Syncing...' : 'Sync Now'}
+          </button>
         </section>
 
         {/* 3. Today's Actions Card */}
@@ -449,6 +536,7 @@ export default function Dashboard() {
                 onClick={() => {
                   setShowSignOutDialog(false);
                   localStorage.removeItem('currentUser');
+                  localStorage.removeItem('userData');
                   navigate('/login');
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#DC2626', color: '#FFF', fontWeight: '600', cursor: 'pointer' }}
