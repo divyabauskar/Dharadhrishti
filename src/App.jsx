@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import LanguageSelection from './components/LanguageSelection';
 import SignIn from './pages/SignIn';
 import RequestAccess from './pages/RequestAccess';
