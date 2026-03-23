@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { sanitizeNumber, formatCurrency } from '../utils/mathUtils';
+import { addHistoryEntry } from '../utils/historyUtils';
 import './Marketplace.css';
 
 export default function Marketplace() {
+  console.log("Market page loaded");
   const navigate = useNavigate();
   const context = useLanguage();
   const t = context?.t || ((key) => key);
@@ -11,6 +14,7 @@ export default function Marketplace() {
   // Local Form State
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [editId, setEditId] = useState(null);
   
   // Data State
   const [expenses, setExpenses] = useState([]);
@@ -23,10 +27,16 @@ export default function Marketplace() {
     // -----------------------------------
     // STEP 1: LOG ACTUAL DATA
     // -----------------------------------
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const rawData = localStorage.getItem(`farm_${currentUser.email}`);
+    let currentUser = {};
+    let parsedUserData = {};
+    try {
+      currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const rawData = localStorage.getItem(`farm_${currentUser.email}`);
+      parsedUserData = JSON.parse(rawData || "{}");
+    } catch (error) {
+      console.error("Failed to parse user data:", error);
+    }
 
-    const parsedUserData = JSON.parse(rawData || "{}");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserData(parsedUserData);
 
@@ -87,15 +97,48 @@ export default function Marketplace() {
     e.preventDefault();
     if (!expenseTitle || !expenseTitle.trim() || !expenseAmount || isNaN(expenseAmount)) return;
     
-    const newEntry = {
-      id: Date.now(),
-      title: expenseTitle.trim(),
-      amount: parseFloat(expenseAmount),
-      date: new Date().toLocaleDateString()
-    };
-    saveExpenses([...expenses, newEntry]);
+    const amount = parseFloat(expenseAmount);
+    if (amount <= 0) return;
+
+    if (editId) {
+      // Update existing expense
+      const updatedExpenses = expenses.map(exp => 
+        exp.id === editId 
+          ? { ...exp, title: expenseTitle.trim(), amount: amount } 
+          : exp
+      );
+      saveExpenses(updatedExpenses);
+      addHistoryEntry('expense', `Updated Expense: ${expenseTitle}`, {
+        title: expenseTitle.trim(),
+        amount: formatCurrency(amount)
+      });
+      setEditId(null);
+    } else {
+      // Add new expense
+      const newEntry = {
+        id: Date.now(),
+        title: expenseTitle.trim(),
+        amount: amount,
+        date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+      };
+      
+      addHistoryEntry('expense', `Added Expense: ${expenseTitle}`, {
+        title: expenseTitle.trim(),
+        amount: formatCurrency(amount)
+      });
+      
+      const updated = [newEntry, ...(expenses || [])];
+      saveExpenses(updated);
+    }
+    
     setExpenseTitle('');
     setExpenseAmount('');
+  };
+
+  const handleEditExpense = (exp) => {
+    setExpenseTitle(exp.title);
+    setExpenseAmount(exp.amount.toString());
+    setEditId(exp.id);
   };
 
   const handleDeleteExpense = (id) => {
@@ -125,11 +168,11 @@ export default function Marketplace() {
 
   // Safe Calculations
   const currentTotalExpenses = (expenses || []).reduce((sum, exp) => {
-    const amt = parseFloat(exp?.amount);
-    return sum + (isNaN(amt) ? 0 : amt);
+    const amt = sanitizeNumber(exp?.amount);
+    return sum + amt;
   }, 0);
   
-  const currentFarmSize = parseFloat(userData?.farmSize) || 1; 
+  const currentFarmSize = sanitizeNumber(userData?.farmSize, 1); 
   
   // Yield Factors
   const yieldMap = { wheat: 20, rice: 25, maize: 18, potato: 50 };
@@ -138,7 +181,7 @@ export default function Marketplace() {
   
   // Dynamic Pricing based on Normalized Crop
   const currentMandiPrice = (mandiPrices || []).find(p => p.crop === selectedCrop)?.price || 0;
-  const revenue = totalYield * currentMandiPrice;
+  const revenue = sanitizeNumber(totalYield * currentMandiPrice);
   const profit = revenue - currentTotalExpenses;
 
   // Capitalize crop for display purposes
@@ -157,7 +200,7 @@ export default function Marketplace() {
         {/* Profit Card */}
         <section className="profit-card">
           <p className="profit-label">{t('estNetProfit') || 'Estimated Net Profit'}</p>
-          <h2 className="profit-amount">₹{profit.toLocaleString('en-IN')}</h2>
+          <h2 className="profit-amount">{formatCurrency(profit)}</h2>
           <p className="profit-details">Based on {currentFarmSize} acres of {t('crop' + displayCrop) || displayCrop}</p>
         </section>
 
@@ -169,7 +212,7 @@ export default function Marketplace() {
           </div>
           <div className="data-card">
             <p className="data-label">{t('projRevenue') || 'Revenue'}</p>
-            <p className="data-value">₹{revenue.toLocaleString('en-IN')}</p>
+            <p className="data-value">{formatCurrency(revenue)}</p>
           </div>
         </div>
 
@@ -189,7 +232,7 @@ export default function Marketplace() {
                     {isActive && <span className="crop-badge">{t('yourCropIndicator') || 'Your Crop'}</span>}
                   </div>
                   <div className="price-details">
-                    <p className="price-value">₹{item.price.toLocaleString('en-IN')}</p>
+                    <p className="price-value">{formatCurrency(item.price)}</p>
                     <p className="trend trend-up">+1.5%</p>
                   </div>
                 </div>
@@ -202,7 +245,7 @@ export default function Marketplace() {
         <section className="market-section">
           <div className="expense-header">
             <h3>{t('trackExpenses') || 'Track Expenses'}</h3>
-            <span className="expense-total-label">Total: ₹{currentTotalExpenses.toLocaleString('en-IN')}</span>
+            <span className="expense-total-label">Total: {formatCurrency(currentTotalExpenses)}</span>
           </div>
           
           <form onSubmit={handleAddExpense} className="expense-form">
@@ -224,11 +267,24 @@ export default function Marketplace() {
                 onChange={e => setExpenseAmount(e.target.value)}
                 placeholder="0.00" 
                 className="form-input"
+                min="0.01"
+                step="0.01"
               />
             </div>
-            <button type="submit" className="btn-add">
-              + {t('addExpenseBtn') || 'Add Expense'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="submit" className="btn-add" style={{ flex: 1 }}>
+                {editId ? 'Update Expense' : `+ ${t('addExpenseBtn') || 'Add Expense'}`}
+              </button>
+              {editId && (
+                <button 
+                  type="button" 
+                  onClick={() => { setEditId(null); setExpenseTitle(''); setExpenseAmount(''); }}
+                  style={{ backgroundColor: '#94A3B8', color: 'white', padding: '14px 20px', borderRadius: '12px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
 
           <div>
@@ -245,15 +301,24 @@ export default function Marketplace() {
                       <p className="log-title">{exp.title}</p>
                       <p className="log-date">{exp.date}</p>
                     </div>
-                    <div className="log-amount-container">
-                      <span className="log-amount">₹{exp.amount.toLocaleString('en-IN')}</span>
-                      <button 
-                        onClick={() => handleDeleteExpense(exp.id)} 
-                        className="btn-delete"
-                        title="Delete"
-                      >
-                        ✕
-                      </button>
+                    <div className="log-amount-container" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="log-amount">{formatCurrency(exp.amount)}</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleEditExpense(exp)} 
+                          style={{ background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }}
+                          title="Edit"
+                        >
+                          ✎
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteExpense(exp.id)} 
+                          className="btn-delete"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

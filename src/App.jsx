@@ -8,6 +8,7 @@ import Scanner from './pages/Scanner';
 import Optimize from './pages/Optimize';
 import Marketplace from './pages/Marketplace';
 import KisanHelp from './pages/KisanHelp';
+import History from './pages/History';
 import './index.css';
 
 function EntryCheck({ children }) {
@@ -37,10 +38,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/scanner" element={<Scanner />} />
         <Route path="/optimize" element={<Optimize />} />
-        <Route path="/optimizer" element={<Optimize />} />
-        <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/market" element={<Marketplace />} />
         <Route path="/kisan-help" element={<KisanHelp />} />
+        <Route path="/history" element={<History />} />
         </Routes>
       </EntryCheck>
     </Router>

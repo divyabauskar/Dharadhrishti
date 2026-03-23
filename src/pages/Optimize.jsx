@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { ArrowLeft, Droplets, Leaf, Map, Calculator, Calendar } from 'lucide-react';
+import { Tractor, ArrowLeft, Droplets, Leaf, Calendar, ThermometerSun, Zap, Activity, Calculator, Map } from 'lucide-react';
+import { sanitizeNumber, calculateTotalFertilizer, calculateRequiredWater } from '../utils/mathUtils';
+import { addHistoryEntry } from '../utils/historyUtils';
 
 export default function ResourceOptimizer() {
+  console.log("Optimize page loaded");
   const navigate = useNavigate();
   const { t } = useLanguage();
   
@@ -39,7 +42,7 @@ export default function ResourceOptimizer() {
         ...prev,
         ...loadedData,
         crop: loadedData.crop || 'Not set',
-        farmSize: parseFloat(loadedData.farmSize) || 0,
+        farmSize: sanitizeNumber(loadedData.farmSize),
         sowingDate: loadedData.sowingDate || null
       }));
 
@@ -49,7 +52,67 @@ export default function ResourceOptimizer() {
   }, []);
 
   // Calculations
-  const acres = parseFloat(farmData.farmSize) || 0;
+  const acres = sanitizeNumber(farmData.farmSize);
+
+  // --- PRIORITY SOIL DATA LOGIC ---
+  const [soilData, setSoilData] = useState({
+    source: 'Default Base',
+    nitrogen: 'Optimal',
+    phosphorus: 'Optimal',
+    potassium: 'Optimal',
+    ph: 'Neutral',
+    status: 'Healthy'
+  });
+
+  useEffect(() => {
+    // Priority 1: Soil Health Card
+    if (farmData?.soilHealth?.hasCard) {
+      setSoilData({
+        source: 'Soil Health Card',
+        nitrogen: farmData.soilHealth.nitrogen || 'Optimal',
+        phosphorus: farmData.soilHealth.phosphorus || 'Optimal',
+        potassium: farmData.soilHealth.potassium || 'Optimal',
+        ph: farmData.soilHealth.ph || 'Neutral',
+        status: 'Measured'
+      });
+      return;
+    }
+
+    // Priority 2: Scanner Data
+    try {
+      const scannerRaw = localStorage.getItem('scannerData');
+      if (scannerRaw) {
+        const parsed = JSON.parse(scannerRaw);
+        setSoilData({
+          source: 'AI Crop Scanner',
+          nitrogen: parsed.nitrogen || 'Optimal',
+          phosphorus: parsed.phosphorus || 'Optimal',
+          potassium: parsed.potassium || 'Optimal',
+          ph: parsed.ph || 'Neutral',
+          status: parsed.status || 'Analyzed'
+        });
+        return;
+      }
+    } catch(e) { console.error('Error reading scanner data', e); }
+
+    // Priority 3: Crop History AI
+    if (farmData.cropHistory?.lastCrop || farmData.cropHistory?.soilType) {
+      const scType = (farmData.cropHistory?.soilType || 'Unknown').toLowerCase();
+      let estStatus = 'Moderate';
+      if (scType.includes('black')) estStatus = 'High Fertility';
+      else if (scType.includes('sandy')) estStatus = 'Low Fertility';
+      
+      setSoilData({
+        source: 'Crop History Inference',
+        nitrogen: scType.includes('black') ? 'Optimal' : 'Variable',
+        phosphorus: 'Variable',
+        potassium: 'Variable',
+        ph: 'Varies',
+        status: estStatus
+      });
+      return;
+    }
+  }, [farmData]);
 
   // Soil Logic & Modifiers
   const soilStr = (farmData.soilType || 'Unknown').toLowerCase();
@@ -110,18 +173,32 @@ export default function ResourceOptimizer() {
   } else if (das <= 20) {
     fertType = "Nitrogen (Urea)";
     fertAmountPerAcre = 20;
+    if (soilData.nitrogen?.toLowerCase() === 'low') fertAmountPerAcre += 10;
     stageName = "Early Stage";
   } else if (das <= 50) {
     fertType = "NPK Mix";
     fertAmountPerAcre = 30;
+    if (soilData.phosphorus?.toLowerCase() === 'low') fertAmountPerAcre += 5;
     stageName = "Mid Stage";
   } else {
     fertType = "Potassium (MOP)";
     fertAmountPerAcre = 25;
+    if (soilData.potassium?.toLowerCase() === 'low') fertAmountPerAcre += 10;
     stageName = "Late Stage";
   }
 
-  const totalFertilizer = (acres * fertAmountPerAcre).toFixed(1);
+  const totalFertilizer = sanitizeNumber(acres * fertAmountPerAcre);
+
+  // Log to history only once when data is valid
+  useEffect(() => {
+    if (acres > 0 && farmData.crop !== 'Not set') {
+      addHistoryEntry('optimize', `Resource Plan for ${farmData.crop}`, {
+        acres: acres,
+        water: `${calculateRequiredWater(acres)}L`,
+        fertilizer: `${totalFertilizer}kg`
+      });
+    }
+  }, [acres, farmData.crop, totalFertilizer]);
 
   // Status mapping
   let recColor = '#16A34A';
@@ -176,6 +253,10 @@ export default function ResourceOptimizer() {
           <p style={{ fontSize: '0.9rem', color: '#0B6A41', fontWeight: '600' }}>
             {t('optimizingFor')} {acres} {t('acresOf')} {farmData.crop || 'Not set'}
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.8rem', color: '#065F46' }}>
+            <Activity size={14} />
+            <span><strong style={{fontWeight: 800}}>Data Source:</strong> {soilData.source} (N: {soilData.nitrogen}, P: {soilData.phosphorus}, K: {soilData.potassium}, pH: {soilData.ph})</span>
+          </div>
         </div>
 
         {/* AI Final Recommendation Card */}
@@ -242,7 +323,7 @@ export default function ResourceOptimizer() {
                   <Droplets size={16} color="#475569" />
                   <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>{t('requiredVolume')}</span>
                 </div>
-                <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1E293B' }}>{(acres * 100).toFixed(0)} {t('liters')}</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1E293B' }}>{calculateRequiredWater(acres)} {t('liters')}</span>
               </div>
             </div>
           )}

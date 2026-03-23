@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, Info, ChevronDown, ArrowRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Info, ChevronDown, ArrowRight, AlertTriangle, Map, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { sanitizeNumber } from '../utils/mathUtils';
 
 const HISTORY_CROPS = [
   { name: 'Wheat', emoji: '🌾' },
@@ -70,6 +71,11 @@ export default function RequestAccess() {
     
     if (!formData.fullName || !formData.phone || !formData.farmSize || !formData.region) {
       setErrorMsg('Please fill required details');
+      return;
+    }
+
+    if (parseFloat(formData.farmSize) <= 0) {
+      setErrorMsg('Farm size must be greater than 0.');
       return;
     }
 
@@ -195,6 +201,59 @@ export default function RequestAccess() {
     }
   };
 
+  // AI Soil Insight Logic
+  const getSoilInsights = () => {
+    if (!lastCrop || !soilType) return null;
+
+    let fertility = "Moderate";
+    let phTendency = "Neutral (6.5 - 7.5)";
+    let npkHint = "Balanced";
+    let riskLevel = "Low";
+    let riskColor = "#10B981"; // green
+    let nextStep = "Apply standard basal dose.";
+
+    // Soil type heuristics
+    if (soilType === 'Black Soil') {
+      fertility = "High";
+      phTendency = "Mildly Alkaline (7.2 - 8.5)";
+      npkHint = "Rich in Calcium/Magnesium, poor in Nitrogen/Phosphorus.";
+      nextStep = "Add Nitrogen & Phosphorus rich fertilizers. Avoid over-irrigation.";
+    } else if (soilType === 'Red Soil') {
+      fertility = "Low to Moderate";
+      phTendency = "Acidic (5.5 - 6.5)";
+      npkHint = "Generally deficient in NPK and humus.";
+      riskLevel = "Medium";
+      riskColor = "#F59E0B"; // yellow
+      nextStep = "Apply organic compost and NPK mix to improve structure.";
+    } else if (soilType === 'Sandy Soil') {
+      fertility = "Low";
+      phTendency = "Acidic to Neutral";
+      npkHint = "Poor nutrient retention. Needs frequent, small doses.";
+      riskLevel = "High";
+      riskColor = "#EF4444"; // red
+      nextStep = "Increase organic matter. Use slow-release fertilizers.";
+    }
+
+    // Crop rotation heuristics
+    const isLegume = (crop) => ['Soybean', 'Moong', 'Groundnut', 'Bengal Gram'].includes(crop);
+    
+    if (isLegume(lastCrop) && !isLegume(formData.primaryCrop)) {
+      npkHint += " (Nitrogen enriched by previous legume crop).";
+      fertility = "Improved by rotation";
+      riskLevel = "Low";
+      riskColor = "#10B981";
+    } else if (lastCrop === formData.primaryCrop && lastCrop) {
+      riskLevel = "Medium to High (Monocropping)";
+      riskColor = "#F59E0B";
+      nextStep += " Consider crop rotation next season to prevent nutrient depletion.";
+      npkHint += " (Risk of specific nutrient mining).";
+    }
+
+    return { fertility, phTendency, npkHint, riskLevel, riskColor, nextStep };
+  };
+
+  const soilInsights = getSoilInsights();
+
   return (
     <div className="app-container req-access-container bg-gray-50">
       {/* Header */}
@@ -215,7 +274,13 @@ export default function RequestAccess() {
         {step === 1 && (
           <div>
             <div className="badge-onboarding">ONBOARDING</div>
-            <h1 className="hero-title pt-4">Join the<br/><span className="text-primary">Dharadhristi</span><br/>Network</h1>
+            <img 
+              src="/logo.png" 
+              alt="DharaDrishti Logo" 
+              style={{ height: '60px', width: 'auto', objectFit: 'contain', marginTop: '16px', borderRadius: '12px' }} 
+              onError={(e) => { e.target.style.display = 'none' }} 
+            />
+            <h1 className="hero-title pt-4">Join the<br/><span className="text-primary">DharaDrishti</span><br/>Network</h1>
             <p className="hero-desc">
               Enter your details below, and our team will review your application to grant access to the Dharadhristi platform.
             </p>
@@ -296,6 +361,8 @@ export default function RequestAccess() {
               className="form-input-solid pr-16"
               value={formData.farmSize}
               onChange={e => setFormData({...formData, farmSize: e.target.value})}
+              min="0.1"
+              step="0.01"
             />
             <span className="input-suffix">ACRES</span>
           </div>
@@ -456,6 +523,53 @@ export default function RequestAccess() {
                 ))}
               </div>
             </div>
+
+            {/* Soil Insight Section */}
+            {soilInsights ? (
+              <div style={{ backgroundColor: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <Map size={24} color="#0B6A41" />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1E293B' }}>AI Soil Insight (Preliminary)</h3>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px' }}>Fertility Status</p>
+                    <p style={{ fontWeight: '700', color: '#1E293B' }}>{soilInsights.fertility}</p>
+                  </div>
+                  <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px' }}>pH Tendency</p>
+                    <p style={{ fontWeight: '700', color: '#1E293B' }}>{soilInsights.phTendency}</p>
+                  </div>
+                  <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0', gridColumn: 'span 2' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px' }}>Nutrient Condition</p>
+                    <p style={{ fontWeight: '700', color: '#1E293B' }}>{soilInsights.npkHint}</p>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#FFFFFF', padding: '16px', borderRadius: '12px', border: `1px solid ${soilInsights.riskColor}`, marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <BarChart2 size={18} color={soilInsights.riskColor} />
+                    <span style={{ fontWeight: '700', color: soilInsights.riskColor }}>Health Risk Level: {soilInsights.riskLevel}</span>
+                  </div>
+                  <p style={{ fontSize: '0.9rem', color: '#334155', fontWeight: '500' }}>
+                    <strong>Suggested Next Step:</strong> {soilInsights.nextStep}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'start', backgroundColor: '#FEF9C3', padding: '12px', borderRadius: '8px', border: '1px solid #FEF08A' }}>
+                  <AlertTriangle size={16} color="#854D0E" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <p style={{ fontSize: '0.75rem', color: '#854D0E', lineHeight: '1.4' }}>
+                    <strong>Note:</strong> This is a preliminary AI analysis based on crop history and soil type. Exact NPK or pH values require a physical soil health card. Please use this as an advisory.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ backgroundColor: '#F8FAFC', padding: '24px', borderRadius: '16px', border: '1px dashed #CBD5E1', marginBottom: '32px', textAlign: 'center' }}>
+                <Map size={32} color="#94A3B8" style={{ margin: '0 auto 12px auto' }} />
+                <p style={{ fontSize: '0.9rem', color: '#64748B', fontWeight: '500' }}>Complete Crop History & Soil Type to view AI Soil Insights</p>
+              </div>
+            )}
 
             <button 
               type="submit" 

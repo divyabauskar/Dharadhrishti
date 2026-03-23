@@ -20,8 +20,16 @@ import {
   Flame,
   LogOut,
   CloudRain,
-  RefreshCw
+  RefreshCw,
+  User,
+  History as HistoryIcon,
+  ChevronRight,
+  Mail,
+  Phone,
+  Scaling,
+  Sprout as SproutIcon
 } from 'lucide-react';
+import { addHistoryEntry } from '../utils/historyUtils';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -33,6 +41,9 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   const [lastSync, setLastSync] = useState(() => localStorage.getItem('lastSync'));
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [fullUserData, setFullUserData] = useState(null);
+  const [completedTasks, setCompletedTasks] = useState([]);
 
   useEffect(() => {
     const currentUserRaw = localStorage.getItem('currentUser');
@@ -69,6 +80,13 @@ export default function Dashboard() {
         sowingDate: farmData.sowingDate || null,
         region: farmData.region || ''
       });
+      setFullUserData(farmData);
+
+      // Load completed tasks
+      const savedTasks = localStorage.getItem(`farm_tasks_${currentUser.email}`);
+      if (savedTasks) {
+        setCompletedTasks(JSON.parse(savedTasks));
+      }
     } catch(e) {
       console.error("Failed to parse farm data", e);
       navigate('/request-access');
@@ -129,6 +147,21 @@ export default function Dashboard() {
     }
   };
 
+  const handleTaskComplete = (taskId, taskName) => {
+    const emailToUse = fullUserData?.email || JSON.parse(localStorage.getItem('currentUser'))?.email;
+    if (!emailToUse) return;
+
+    const updatedTasks = [...completedTasks, taskId];
+    setCompletedTasks(updatedTasks);
+    localStorage.setItem(`farm_tasks_${emailToUse}`, JSON.stringify(updatedTasks));
+    
+    // Log to history
+    addHistoryEntry('action', `Completed Task: ${taskName}`, {
+      task: taskName,
+      date: new Date().toLocaleDateString('en-IN')
+    });
+  };
+
   useEffect(() => {
     const handleOnline = () => {
       handleSync();
@@ -172,10 +205,75 @@ export default function Dashboard() {
   const growthStage = getGrowthStage(das);
 
   // Action Logic
+  // Priority Soil Logic for Alerts
+  let soilDeficient = false;
+  try {
+    if (userData?.soilHealth?.hasCard) {
+      if (userData.soilHealth.nitrogen === 'low' || userData.soilHealth.phosphorus === 'low' || userData.soilHealth.potassium === 'low') {
+        soilDeficient = true;
+      }
+    } else {
+      const scannerRaw = localStorage.getItem('scannerData');
+      if (scannerRaw) {
+        const scannerData = JSON.parse(scannerRaw);
+        if (scannerData.status === 'deficient') {
+          soilDeficient = true;
+        }
+      }
+    }
+  } catch(e) {}
+
+  const waterTaskId = `water_${das}`;
+  const fertTaskId = `fert_${das}`;
+  const fertDeficiencyId = `fert_deficiency`; 
+
   const needsWateringRaw = isSowingSet && das < 10;
-  const needsWatering = needsWateringRaw && !isRaining;
-  const needsFertilizer = isSowingSet && das > 30;
+  const needsWatering = needsWateringRaw && !isRaining && !completedTasks.includes(waterTaskId);
+  
+  const needsFertilizerScheduled = isSowingSet && das > 30 && !completedTasks.includes(fertTaskId);
+  const needsFertilizerDeficient = soilDeficient && !completedTasks.includes(fertDeficiencyId);
+  const needsFertilizer = needsFertilizerScheduled || needsFertilizerDeficient;
+
   const hasActions = needsWatering || needsFertilizer;
+
+  // Dynamic Crop Health Calculation
+  const calculateCropHealth = () => {
+    let health = 80; // Base health
+    let yieldMod = 0;
+
+    // Positive factors
+    const completedWateringCount = completedTasks.filter(t => t.startsWith('water_')).length;
+    const completedFertCount = completedTasks.filter(t => t.startsWith('fert_')).length;
+
+    health += (completedWateringCount * 2); // +2% per watering done
+    health += (completedFertCount * 5); // +5% per fertilizer done
+    yieldMod += (completedWateringCount * 0.1);
+    yieldMod += (completedFertCount * 0.2);
+
+    // Negative factors
+    if (lastScan && lastScan.status === 'severe') {
+      health -= 25;
+      yieldMod -= 1.5;
+    } else if (lastScan && lastScan.status !== 'healthy') {
+      health -= 15;
+      yieldMod -= 0.8;
+    }
+
+    if (soilDeficient && !completedTasks.includes(fertDeficiencyId)) {
+      health -= 15;
+      yieldMod -= 0.5;
+    }
+
+    health = Math.min(100, Math.max(0, health)); // Clamp 0-100
+    return { 
+      healthIndex: Math.round(health), 
+      healthText: health >= 85 ? t('good') : (health >= 60 ? 'Fair' : 'Poor'),
+      healthColor: health >= 85 ? '#10B981' : (health >= 60 ? '#F59E0B' : '#DC2626'),
+      estYield: Math.max(0, (2.5 + yieldMod)).toFixed(1)
+    };
+  };
+
+  const cropHealth = calculateCropHealth();
 
   return (
     <div className="app-container" style={{ backgroundColor: '#F8FAFC', paddingBottom: '80px', minHeight: '100vh', position: 'relative' }}>
@@ -192,11 +290,21 @@ export default function Dashboard() {
         top: 0,
         zIndex: 10
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Tractor size={24} color="#0B6A41" />
-          <h1 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1E293B', letterSpacing: '-0.02em' }}>
-            {t('farmTracker')}
-          </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img 
+            src="/logo.png" 
+            alt="DharaDrishti Logo" 
+            style={{ height: '44px', width: 'auto', objectFit: 'contain', borderRadius: '8px' }} 
+            onError={(e) => { e.target.style.display = 'none' }} 
+          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0B6A41', margin: 0, lineHeight: '1.1', letterSpacing: '-0.02em' }}>
+              DharaDrishti
+            </h1>
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748B', marginTop: '2px' }}>
+              Smart Farming. Better Harvest.
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <div 
@@ -207,12 +315,126 @@ export default function Dashboard() {
             style={{ fontWeight: 'bold', color: '#0B6A41', cursor: 'pointer', backgroundColor: '#F0FAF5', padding: '4px 8px', borderRadius: '8px', fontSize: '0.8rem' }}>
             {language.toUpperCase()}
           </div>
+          
+          {/* Profile Menu Wrapper */}
           <div style={{ position: 'relative' }}>
-            <Bell size={24} color="#475569" />
-            <span style={{ position: 'absolute', top: 0, right: 0, width: '10px', height: '10px', backgroundColor: '#EF4444', borderRadius: '50%', border: '2px solid white' }}></span>
-          </div>
-          <div onClick={() => setShowSignOutDialog(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} title={t('signOut')}>
-            <LogOut size={24} color="#EF4444" />
+            <div 
+              onClick={() => setIsProfileOpen(!isProfileOpen)} 
+              style={{ 
+                width: '36px', 
+                height: '36px', 
+                borderRadius: '50%', 
+                backgroundColor: '#F0FAF5', 
+                border: '2px solid #0B6A41',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '800',
+                color: '#0B6A41',
+                overflow: 'hidden'
+              }}
+            >
+              {userData.name ? userData.name.charAt(0).toUpperCase() : <User size={20} />}
+            </div>
+
+            {/* Dropdown Menu */}
+            {isProfileOpen && (
+              <>
+                <div 
+                  onClick={() => setIsProfileOpen(false)} 
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }}
+                ></div>
+                <div style={{
+                  position: 'absolute',
+                  top: '46px',
+                  right: 0,
+                  width: '280px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                  padding: '16px',
+                  zIndex: 100,
+                  border: '1px solid #E2E8F0',
+                  animation: 'fadeIn 0.2s ease-out'
+                }}>
+                  {/* User Profile Summary */}
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#0B6A41', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: '800' }}>
+                      {userData.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#1E293B' }}>{userData.name}</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748B' }}>{fullUserData?.email || t('farmerProfile')}</p>
+                    </div>
+                  </div>
+
+                  {/* Profile Details List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                    {fullUserData?.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Phone size={14} color="#64748B" />
+                        <span style={{ fontSize: '0.8rem', color: '#475569' }}>{fullUserData.phone}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Scaling size={14} color="#64748B" />
+                      <span style={{ fontSize: '0.8rem', color: '#475569' }}>{fullUserData?.farmSize || '0'} Acres</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <SproutIcon size={14} color="#64748B" />
+                      <span style={{ fontSize: '0.8rem', color: '#475569' }}>{userData.crop}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button 
+                      onClick={() => { setIsProfileOpen(false); navigate('/history'); }}
+                      style={{ 
+                        padding: '10px 12px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '10px', 
+                        borderRadius: '8px', 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left'
+                      }}
+                      className="hover-bg-gray"
+                    >
+                      <HistoryIcon size={18} color="#475569" />
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155', flex: 1 }}>{t('userHistory')}</span>
+                      <ChevronRight size={16} color="#CBD5E1" />
+                    </button>
+                    
+                    <button 
+                      onClick={() => { setIsProfileOpen(false); setShowSignOutDialog(true); }}
+                      style={{ 
+                        padding: '10px 12px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '10px', 
+                        borderRadius: '8px', 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        marginTop: '4px'
+                      }}
+                      className="hover-bg-gray"
+                    >
+                      <LogOut size={18} color="#EF4444" />
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#EF4444' }}>{t('signOut')}</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -291,7 +513,7 @@ export default function Dashboard() {
                   <p style={{ fontWeight: '700', color: '#1E3A8A', fontSize: '0.95rem' }}>{t('wateringRequired')}</p>
                   <p style={{ fontSize: '0.8rem', color: '#3B82F6' }}>{t('wateringDesc')}</p>
                 </div>
-                <button style={{ backgroundColor: '#2563EB', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.8rem' }}>{t('done')}</button>
+                <button onClick={() => handleTaskComplete(waterTaskId, 'Watering Action')} style={{ backgroundColor: '#2563EB', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>{t('done')}</button>
               </div>
             )}
 
@@ -299,10 +521,14 @@ export default function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: '#F0FAF5', borderRadius: '12px', border: '1px solid #B2F2BB' }}>
                 <div style={{ backgroundColor: '#D3F9D8', padding: '10px', borderRadius: '10px' }}><Leaf size={20} color="#2B8A3E" /></div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: '700', color: '#115E59', fontSize: '0.95rem' }}>{t('fertilizerNeeded')}</p>
-                  <p style={{ fontSize: '0.8rem', color: '#0F766E' }}>{t('fertilizerDesc')}</p>
+                  <p style={{ fontWeight: '700', color: '#115E59', fontSize: '0.95rem' }}>
+                    {needsFertilizerDeficient ? 'Nutrient Deficiency Detected' : t('fertilizerNeeded')}
+                  </p>
+                  <p style={{ fontSize: '0.8rem', color: '#0F766E' }}>
+                    {needsFertilizerDeficient ? 'Apply recommended fertilizer to restore soil health.' : t('fertilizerDesc')}
+                  </p>
                 </div>
-                <button style={{ backgroundColor: '#0B6A41', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.8rem' }}>{t('done')}</button>
+                <button onClick={() => handleTaskComplete(needsFertilizerDeficient ? fertDeficiencyId : fertTaskId, 'Fertilizer Application')} style={{ backgroundColor: '#0B6A41', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>{t('done')}</button>
               </div>
             )}
 
@@ -384,33 +610,7 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 6. AI Scanner Card */}
-        <section 
-          onClick={() => navigate('/scanner')}
-          style={{ 
-            background: 'linear-gradient(135deg, #0B6A41 0%, #115E59 100%)', 
-            borderRadius: '16px', 
-            padding: '20px', 
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            boxShadow: '0 10px 15px -3px rgba(11, 106, 65, 0.3)'
-          }}
-        >
-          <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Scan size={24} /> {t('aiScanner')}
-            </h3>
-            <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>{t('aiScannerDesc')}</p>
-          </div>
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '50%' }}>
-            <Scan size={24} />
-          </div>
-        </section>
-
-        {/* 7. Growth Tracker Card */}
+        {/* 6. Growth Tracker Card */}
         <section style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', padding: '20px', border: '1px solid #E2E8F0' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1E293B', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📈 {t('growthTracker')}
@@ -431,11 +631,11 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '16px', borderTop: '1px dashed #E2E8F0' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>{t('healthIndex')}</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#10B981' }}>92% ({t('good')})</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: cropHealth.healthColor }}>{cropHealth.healthIndex}% ({cropHealth.healthText})</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>{t('estYield')}</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1E293B' }}>4.2 {t('tonsAc')}</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1E293B' }}>{cropHealth.estYield} {t('tonsAc')}</span>
             </div>
           </div>
         </section>
@@ -491,7 +691,7 @@ export default function Dashboard() {
           <span style={{ fontSize: '0.7rem', fontWeight: '600' }}>{t('scanner')}</span>
         </div>
 
-        <div onClick={() => navigate('/optimizer')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: '#94A3B8', cursor: 'pointer' }}>
+        <div onClick={() => navigate('/optimize')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: '#94A3B8', cursor: 'pointer' }}>
           <Settings2 size={24} />
           <span style={{ fontSize: '0.7rem', fontWeight: '600' }}>{t('optimize')}</span>
         </div>

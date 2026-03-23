@@ -108,9 +108,14 @@ export default function SignIn() {
       </button>
 
       {/* Brand Header */}
-      <div className="signin-header" style={{ marginTop: '20px' }}>
-        <div className="brand-logo-large">AQ</div>
-        <h1 className="brand-title">Dharadhristi</h1>
+      <div className="signin-header" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <img 
+          src="/logo.png" 
+          alt="DharaDrishti Logo" 
+          style={{ height: '80px', width: 'auto', objectFit: 'contain', marginBottom: '16px', borderRadius: '12px' }} 
+          onError={(e) => { e.target.style.display = 'none' }} 
+        />
+        <h1 className="brand-title">DharaDrishti</h1>
         <p className="brand-subtitle">{t('precisionAgronomy')}</p>
       </div>
 

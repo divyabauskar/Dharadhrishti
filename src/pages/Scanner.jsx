@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { ArrowLeft, UploadCloud, Camera, Scan, CheckCircle, AlertTriangle, Leaf, X, Bug } from 'lucide-react';
+import { ArrowLeft, UploadCloud, Camera, Scan, CheckCircle, AlertTriangle, Leaf, X, Bug, TestTube } from 'lucide-react';
+import { addHistoryEntry } from '../utils/historyUtils';
 
 export default function Scanner() {
   const navigate = useNavigate();
@@ -10,11 +11,14 @@ export default function Scanner() {
   const [imagePreview, setImagePreview] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
+  const [scannerMode, setScannerMode] = useState('pest'); // 'pest' or 'soil'
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Handle file selection
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -32,76 +36,153 @@ export default function Scanner() {
   // Reset image
   const clearImage = () => {
     setImagePreview(null);
+    setSelectedFile(null);
     setScanResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Mock Data Pool
-  const MOCK_RESULTS = [
+  // Mock Data Pools
+  const PEST_MOCK_RESULTS = [
     {
-      disease: 'Early Blight (Alternaria solani)',
-      confidence: 94,
+      issue: 'Early Blight (Leaf Spots)',
+      type: 'Disease',
       severity: 'High',
       status: 'severe',
-      type: 'Fungal Infection',
-      description: 'A fungal disease causing dark, concentric rings on older leaves, eventually leading to severe defoliation.',
-      organicTreatment: 'Remove infected leaves immediately. Apply copper soap or Bacillus subtilis-based bio-fungicides.',
-      chemicalTreatment: 'Apply chlorothalonil or mancozeb-based protective fungicides as per manufacturer guidelines.'
+      action: 'Apply copper soap fungicide to halt spreading immediately.'
     },
     {
-      disease: 'Aphid Infestation',
-      confidence: 88,
-      severity: 'Moderate',
+      issue: 'Aphid Infestation (Leaf Holes)',
+      type: 'Pest',
+      severity: 'Medium',
       status: 'moderate',
-      type: 'Pest Infestation',
-      description: 'Small sap-sucking insects that cause curling, yellowing leaves and leave sticky honeydew residue, attracting mold.',
-      organicTreatment: 'Spray neem oil or insecticidal soap on affected areas. Introduce ladybugs as natural predators.',
-      chemicalTreatment: 'Use systemic insecticides containing imidacloprid for severe or rapid-spreading cases.'
+      action: 'Spray neem oil or insecticidal soap on affected areas.'
     },
     {
-      disease: 'Nitrogen Deficiency',
-      confidence: 91,
+      issue: 'Nutrient Deficiency (Yellowing)',
+      type: 'Deficiency',
       severity: 'Low',
       status: 'moderate',
-      type: 'Nutrient Deficiency',
-      description: 'Characterized by the generalized yellowing (chlorosis) of older, lower leaves while new upper leaves remain pale.',
-      organicTreatment: 'Apply blood meal, fish emulsion, or rich compost tea to the soil around the base.',
-      chemicalTreatment: 'Apply a balanced NPK fertilizer with a higher nitrogen ratio (e.g., urea fast-release).'
+      action: 'Perform a Soil & Nutrient Scan to identify the missing nutrient.'
     },
     {
-      disease: 'Healthy Crop',
-      confidence: 98,
+      issue: 'Healthy Crop',
+      type: 'None',
       severity: 'None',
       status: 'healthy',
-      type: 'Optimal Health',
-      description: 'The plant shows no signs of visible pests, diseases, or deficiencies. The chlorophyll levels are optimal.',
-      organicTreatment: 'Continue regular watering schedule and standard compost applications.',
-      chemicalTreatment: 'No chemical intervention required. Preventative spray optional depending on season.'
+      action: 'No issues detected. Continue standard care.'
     }
   ];
 
-  // Map status colors
+  const SOIL_MOCK_RESULTS = [
+    {
+      condition: 'Healthy Soil',
+      status: 'healthy',
+      nitrogen: 'Optimal',
+      phosphorus: 'Optimal',
+      potassium: 'Optimal',
+      ph: 'Neutral',
+      action: 'Soil is perfectly balanced. Maintain current watering schedule.'
+    },
+    {
+      condition: 'Nitrogen Deficiency (Yellow Leaves)',
+      status: 'deficient',
+      nitrogen: 'Low',
+      phosphorus: 'Optimal',
+      potassium: 'Optimal',
+      ph: 'Slightly Acidic',
+      action: 'Nitrogen is low. Add 2kg urea per acre.'
+    },
+    {
+      condition: 'Phosphorus Deficiency (Purple Leaves)',
+      status: 'deficient',
+      nitrogen: 'Optimal',
+      phosphorus: 'Low',
+      potassium: 'Optimal',
+      ph: 'Neutral',
+      action: 'Phosphorus is low. Apply bone meal or DAP fertilizer.'
+    },
+    {
+      condition: 'Potassium Deficiency (Brown Edges)',
+      status: 'deficient',
+      nitrogen: 'Optimal',
+      phosphorus: 'Optimal',
+      potassium: 'Low',
+      ph: 'Alkaline',
+      action: 'Potassium is low. Add MOP or wood ash to soil.'
+    }
+  ];
+
   const STATUS_COLORS = {
-    severe: { bg: '#FEF2F2', border: '#FCA5A5', icon: '#DC2626', text: '#991B1B', barBg: '#FEE2E2', barFill: '#DC2626' },
-    moderate: { bg: '#FEF9C3', border: '#FDE047', icon: '#CA8A04', text: '#854D0E', barBg: '#FEF08A', barFill: '#EAB308' },
-    healthy: { bg: '#F0FAF5', border: '#86EFAC', icon: '#10B981', text: '#065F46', barBg: '#D1FAE5', barFill: '#10B981' }
+    severe: { bg: '#FEF2F2', border: '#FCA5A5', icon: '#DC2626', text: '#991B1B' },
+    moderate: { bg: '#FEF9C3', border: '#FDE047', icon: '#CA8A04', text: '#854D0E' },
+    deficient: { bg: '#FEF2F2', border: '#FCA5A5', icon: '#DC2626', text: '#991B1B' },
+    healthy: { bg: '#F0FAF5', border: '#86EFAC', icon: '#10B981', text: '#065F46' }
   };
 
-  // Mock scan function
   const startScan = () => {
-    if (!imagePreview) return;
+    if (!imagePreview) {
+      alert("Please upload or capture an image first");
+      return;
+    }
+    
     setIsScanning(true);
     
-    // Simulate API call delay
     setTimeout(() => {
       setIsScanning(false);
-      // Pick random result that is DIFFERENT from the current one
       let nextResult;
-      do {
-        nextResult = MOCK_RESULTS[Math.floor(Math.random() * MOCK_RESULTS.length)];
-      } while (scanResult && nextResult.disease === scanResult.disease);
+      const fileName = selectedFile?.name?.toLowerCase() || '';
       
-      localStorage.setItem('lastScanResult', JSON.stringify(nextResult));
+      if (scannerMode === 'pest') {
+        if (fileName.includes('spot') || fileName.includes('blight')) {
+          nextResult = PEST_MOCK_RESULTS.find(r => r.issue.includes('Blight'));
+        } else if (fileName.includes('hole') || fileName.includes('aphid')) {
+          nextResult = PEST_MOCK_RESULTS.find(r => r.issue.includes('Aphid'));
+        } else if (fileName.includes('yellow')) {
+          nextResult = PEST_MOCK_RESULTS.find(r => r.type === 'Deficiency');
+        } else if (fileName.includes('healthy')) {
+          nextResult = PEST_MOCK_RESULTS.find(r => r.status === 'healthy');
+        } else {
+          do {
+            nextResult = PEST_MOCK_RESULTS[Math.floor(Math.random() * PEST_MOCK_RESULTS.length)];
+          } while (scanResult && nextResult.issue === scanResult.issue);
+        }
+        
+        localStorage.setItem('pestScanData', JSON.stringify(nextResult));
+        addHistoryEntry('scan', `Pest Scan: ${nextResult.issue}`, {
+          issue: nextResult.issue,
+          severity: nextResult.severity
+        });
+      } else {
+        if (fileName.includes('yellow') || fileName.includes('nitrogen')) {
+          nextResult = SOIL_MOCK_RESULTS.find(r => r.condition.includes('Nitrogen'));
+        } else if (fileName.includes('purple') || fileName.includes('phosphorus')) {
+          nextResult = SOIL_MOCK_RESULTS.find(r => r.condition.includes('Phosphorus'));
+        } else if (fileName.includes('brown') || fileName.includes('potassium')) {
+          nextResult = SOIL_MOCK_RESULTS.find(r => r.condition.includes('Potassium'));
+        } else if (fileName.includes('healthy')) {
+          nextResult = SOIL_MOCK_RESULTS.find(r => r.status === 'healthy');
+        } else {
+          do {
+            nextResult = SOIL_MOCK_RESULTS[Math.floor(Math.random() * SOIL_MOCK_RESULTS.length)];
+          } while (scanResult && nextResult.condition === scanResult.condition);
+        }
+
+        
+        let structuredData = {
+          nitrogen: nextResult.nitrogen.toLowerCase(),
+          phosphorus: nextResult.phosphorus.toLowerCase(),
+          potassium: nextResult.potassium.toLowerCase(),
+          ph: nextResult.ph.toLowerCase(),
+          status: nextResult.status
+        };
+        localStorage.setItem('scannerData', JSON.stringify(structuredData));
+        nextResult.structuredData = structuredData;
+        addHistoryEntry('scan', `Soil Scan: ${nextResult.condition}`, {
+          status: nextResult.status,
+          action: nextResult.action
+        });
+      }
+
       setScanResult(nextResult);
     }, 2800);
   };
@@ -131,6 +212,21 @@ export default function Scanner() {
           {t('aiCropScanner')}
         </h1>
       </header>
+
+      <div style={{ backgroundColor: '#FFFFFF', padding: '12px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '12px' }}>
+        <button
+          onClick={() => { setScannerMode('pest'); clearImage(); }}
+          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: scannerMode === 'pest' ? '#DCFCE7' : '#F1F5F9', color: scannerMode === 'pest' ? '#166534' : '#64748B' }}
+        >
+          <Bug size={18} /> {t('pestDisease') || 'Pest & Disease'}
+        </button>
+        <button
+          onClick={() => { setScannerMode('soil'); clearImage(); }}
+          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: scannerMode === 'soil' ? '#E0E7FF' : '#F1F5F9', color: scannerMode === 'soil' ? '#3730A3' : '#64748B' }}
+        >
+          <TestTube size={18} /> {t('soilNutrient') || 'Soil & Nutrient'}
+        </button>
+      </div>
 
       <main style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         
@@ -199,8 +295,8 @@ export default function Scanner() {
           onChange={handleFileChange}
         />
 
-        {/* Scan Button (Only show if image is selected and not yet scanned) */}
-        {imagePreview && !scanResult && (
+        {/* Scan Button (Always present, but requires image preview to proceed) */}
+        {!scanResult && (
           <div style={{ marginTop: '24px' }}>
             <button 
               onClick={startScan}
@@ -226,7 +322,7 @@ export default function Scanner() {
               {isScanning ? (
                 <>{t('analyzingLeaf')} <Scan size={24} className="animate-pulse" /></>
               ) : (
-                <><Scan size={24} /> {t('scanCrop')}</>
+                <><Scan size={24} /> Run {scannerMode === 'pest' ? 'Pest' : 'Nutrient'} Scan</>
               )}
             </button>
           </div>
@@ -234,82 +330,68 @@ export default function Scanner() {
 
         {/* Result Section */}
         {scanResult && (() => {
-          const colors = STATUS_COLORS[scanResult.status];
+          const colors = STATUS_COLORS[scanResult.status] || STATUS_COLORS.healthy;
           return (
             <div style={{ marginTop: '24px', animation: 'slideUp 0.4s ease-out', paddingBottom: '20px' }}>
               <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                 
-                {/* Header: Status and Disease Name */}
-                <div style={{ backgroundColor: colors.bg, padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {scanResult.status === 'severe' ? <AlertTriangle size={28} color={colors.icon} /> : <CheckCircle size={28} color={colors.icon} />}
+                {/* Strict Formatting Render */}
+                <div style={{ backgroundColor: colors.bg, padding: '20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {scanResult.status === 'healthy' ? <CheckCircle size={32} color={colors.icon} /> : <AlertTriangle size={32} color={colors.icon} />}
                   <div>
-                    <h3 style={{ fontSize: '0.85rem', fontWeight: '800', color: colors.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {scanResult.type}
+                    <h3 style={{ fontSize: '0.9rem', fontWeight: '800', color: colors.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {scannerMode === 'pest' ? scanResult.type : 'Soil Analysis'}
                     </h3>
-                    <p style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1E293B', marginTop: '2px' }}>{scanResult.disease}</p>
+                    <p style={{ fontSize: '1.3rem', fontWeight: '800', color: '#1E293B', marginTop: '4px' }}>
+                      {scannerMode === 'pest' ? scanResult.issue : scanResult.condition}
+                    </p>
                   </div>
                 </div>
 
                 <div style={{ padding: '20px' }}>
-                  
-                  {/* Confidence Bar & Severity */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '20px', marginBottom: '20px', alignItems: 'center' }}>
-                    
-                    {/* Progress Bar */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '600' }}>{t('confidenceScore')}</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#1E293B' }}>{scanResult.confidence}%</span>
+                  {scannerMode === 'pest' ? (
+                    // Pest Layout (Simple Data)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px dashed #E2E8F0' }}>
+                        <span style={{ fontSize: '0.9rem', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>Severity Level</span>
+                        <strong style={{ fontSize: '1rem', color: colors.icon, fontWeight: '800', padding: '4px 12px', backgroundColor: colors.bg, borderRadius: '20px' }}>{scanResult.severity}</strong>
                       </div>
-                      <div style={{ height: '8px', backgroundColor: colors.barBg, borderRadius: '100px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${scanResult.confidence}%`, backgroundColor: colors.barFill, borderRadius: '100px', transition: 'width 1s ease-in-out' }}></div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: '600' }}>{t('severityProp')}</span>
-                      <span style={{ fontSize: '1.1rem', fontWeight: '800', color: colors.icon }}>{scanResult.severity}</span>
-                    </div>
-
-                  </div>
-
-                  {/* Description */}
-                  <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px dashed #E2E8F0' }}>
-                    <p style={{ fontSize: '0.95rem', color: '#475569', lineHeight: '1.6', fontWeight: '500' }}>
-                      {scanResult.description}
-                    </p>
-                  </div>
-
-                  {/* Treatments */}
-                  {scanResult.status !== 'healthy' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#1E293B', marginBottom: '4px' }}>{t('treatmentPlan')}</h4>
-                      
-                      <div style={{ backgroundColor: '#F0FAF5', padding: '16px', borderRadius: '12px', border: '1px solid #B2F2BB' }}>
-                        <h5 style={{ fontSize: '0.9rem', fontWeight: '800', color: '#0B6A41', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                          <Leaf size={18} color="#0B6A41" /> {t('organicSolution')}
-                        </h5>
-                        <p style={{ fontSize: '0.9rem', color: '#115E59', lineHeight: '1.5', fontWeight: '500' }}>
-                          {scanResult.organicTreatment}
-                        </p>
-                      </div>
-
-                      <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
-                        <h5 style={{ fontSize: '0.9rem', fontWeight: '800', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                          <Bug size={18} color="#64748B" /> {t('chemicalSolution')}
-                        </h5>
-                        <p style={{ fontSize: '0.9rem', color: '#334155', lineHeight: '1.5', fontWeight: '500' }}>
-                          {scanResult.chemicalTreatment}
+                      <div>
+                        <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '700', display: 'block', marginBottom: '8px' }}>Action Required:</span>
+                        <p style={{ fontSize: '1.1rem', color: '#1E293B', fontWeight: '600', lineHeight: '1.5', backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+                          💡 {scanResult.action}
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ backgroundColor: '#F0FAF5', padding: '20px', borderRadius: '12px', border: '1px solid #B2F2BB', textAlign: 'center' }}>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0B6A41', marginBottom: '4px' }}>{t('keepUpGoodWork')}</h4>
-                      <p style={{ fontSize: '0.95rem', color: '#065F46', fontWeight: '500' }}>{t('noTreatmentsRequired')}</p>
+                    // Soil Layout (Strict NPK)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                         <div style={{ backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Nitrogen (N)</span>
+                            <strong style={{ fontSize: '1.1rem', color: scanResult.nitrogen === 'Low' ? '#DC2626' : '#10B981' }}>{scanResult.nitrogen}</strong>
+                         </div>
+                         <div style={{ backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Phosphorus (P)</span>
+                            <strong style={{ fontSize: '1.1rem', color: scanResult.phosphorus === 'Low' ? '#DC2626' : '#10B981' }}>{scanResult.phosphorus}</strong>
+                         </div>
+                         <div style={{ backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Potassium (K)</span>
+                            <strong style={{ fontSize: '1.1rem', color: scanResult.potassium === 'Low' ? '#DC2626' : '#10B981' }}>{scanResult.potassium}</strong>
+                         </div>
+                         <div style={{ backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>pH Level</span>
+                            <strong style={{ fontSize: '1.1rem', color: '#3B82F6' }}>{scanResult.ph}</strong>
+                         </div>
+                      </div>
+                      <div style={{ marginTop: '8px' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '700', display: 'block', marginBottom: '8px' }}>Action Required:</span>
+                        <p style={{ fontSize: '1.1rem', color: '#1E293B', fontWeight: '600', lineHeight: '1.5', backgroundColor: '#F0FAF5', padding: '16px', borderRadius: '12px', border: '1px solid #B2F2BB' }}>
+                          🌾 {scanResult.action}
+                        </p>
+                      </div>
                     </div>
                   )}
-
                 </div>
 
               </div>
